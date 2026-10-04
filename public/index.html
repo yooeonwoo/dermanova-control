@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#234b3d">
+  <meta name="description" content="레아쥬·바이오폭스·711메디샷의 행사와 공유 링크를 한곳에서 확인하는 더마노바 관제센터">
+  <title>더마노바 관제센터 · 팀 공유포털</title>
+  <link rel="icon" href="/logo.png" type="image/png">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">본문으로 이동</a>
+  <aside class="sidebar">
+    <a class="identity" href="#home" aria-label="더마노바 홈"><img class="brand-logo" src="/logo.png" alt="DN" width="390" height="268"><span>DERMANOVA</span></a>
+    <nav aria-label="주 메뉴" id="navigation"></nav>
+    <button class="admin-entry" id="admin-entry"></button>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><a class="mobile-logo" href="#home" aria-label="더마노바 홈"><img src="/logo.png" alt="DN" width="390" height="268"></a><div class="breadcrumb">더마노바 <span>/</span> <b id="breadcrumb">홈</b></div><div class="topbar-right"><span id="today"></span></div></header>
+    <main id="main" tabindex="-1">
+      <section class="page-heading"><div><h1 id="page-title">홈</h1></div><button class="button subtle" id="refresh"></button></section>
+      <div class="tools"><div class="brand-filters" id="brand-filters" role="group" aria-label="브랜드 선택"></div><label class="search" id="search-label"><span id="search-icon"></span><input id="search" type="search" placeholder="행사, 링크, 공지 검색" aria-label="행사, 링크, 공지 검색"><kbd>/</kbd></label></div>
+      <div id="mode-banner"></div>
+      <div id="load-error" role="alert"></div>
+      <div id="content" aria-live="polite"></div>
+      <footer class="footer"><span class="footer-about"><span class="repo-share"><span class="repo-label">수정 GitHub 링크</span><button class="repo-copy" data-action="copy-repository" aria-label="수정 GitHub 저장소 주소 복사" title="클릭하면 주소가 복사됩니다"><span>https://github.com/yooeonwoo/dermanova-control.git</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/></svg></button></span></span><div><button id="demo-toggle">예시 화면 보기</button></div></footer>
+    </main>
+  </div>
+  <dialog id="detail-dialog" class="detail-dialog" aria-labelledby="detail-title"><div id="detail-content"></div></dialog>
+  <dialog id="login-dialog" class="small-dialog" aria-labelledby="login-title"><form id="login-form"><div class="dialog-top"><button type="button" class="icon-button close-dialog" aria-label="닫기">×</button></div><h2 id="login-title">관리자 로그인</h2><label>관리자 비밀번호<input type="password" name="password" required autocomplete="current-password" maxlength="200"></label><p id="login-error" class="form-error" role="alert"></p><button class="button primary full" type="submit">로그인</button></form></dialog>
+  <dialog id="editor-dialog" class="editor-dialog" aria-labelledby="editor-title"><form id="editor-form"><div class="dialog-top"><button type="button" class="icon-button close-dialog" aria-label="닫기">×</button></div><h2 id="editor-title">새 정보 등록</h2><div class="form-grid"><label>정보 종류<select name="type"><option value="notice">공지</option><option value="event">이벤트 / 행사</option><option value="link">공유 링크</option></select></label><label>브랜드<select name="brand"><option>공통</option><option>레아쥬</option><option>바이오폭스</option><option>711메디샷</option></select></label><label class="span-2">제목<input name="title" required maxlength="120" placeholder="제목"></label><label class="span-2">한 줄 설명<input name="description" maxlength="600" placeholder="대상·용도·주요 조건"></label><label class="event-field">시작일<input name="startDate" type="date"></label><label class="event-field">종료일<input name="endDate" type="date"></label><label class="link-field span-2">링크 분류<select name="category"><option>주문·신청</option><option>교육·자료</option><option>홍보·콘텐츠</option><option>업무·기타</option></select></label><label class="span-2">연결할 링크<input name="url" type="url" maxlength="2000" placeholder="https://"></label><label class="span-2">상세 내용<textarea name="body" rows="5" maxlength="12000" placeholder="조건·유의사항"></textarea></label><label class="link-field span-2">함께 복사할 안내문<textarea name="shareText" rows="3" maxlength="3000" placeholder="링크와 함께 복사할 문구"></textarea></label><label class="span-2">담당자 / 담당팀<input name="owner" maxlength="100" placeholder="예: 영업팀"></label><label class="checkbox"><input name="pinned" type="checkbox">홈에 우선 표시</label><label class="checkbox"><input name="archived" type="checkbox">종료 / 보관 처리</label></div><p class="form-hint">공개 자료만 등록하세요. 개인정보·비공개 자료 제외.</p><p id="editor-error" class="form-error" role="alert"></p><div class="dialog-actions"><button class="button subtle close-dialog" type="button">취소</button><button class="button primary" type="submit">저장하기</button></div></form></dialog>
+  <div class="toast" id="toast" role="status"></div>
+</body>
+</html>

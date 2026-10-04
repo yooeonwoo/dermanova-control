@@ -1,0 +1,13 @@
+{
+  "name": "dermanova-control",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24.10.0" },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "setup": "node scripts/setup.js",
+    "test": "node --test tests/*.test.js"
+  }
+}
