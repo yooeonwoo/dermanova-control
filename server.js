@@ -7,14 +7,14 @@ import { DatabaseSync } from 'node:sqlite';
 import { validateRecord } from './lib/records.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
-if (existsSync(resolve(root, '.env'))) process.loadEnvFile(resolve(root, '.env'));
+if (!process.env.VERCEL && existsSync(resolve(root, '.env'))) process.loadEnvFile(resolve(root, '.env'));
 
-export function createPortal({ dataDir = process.env.DATA_DIR || resolve(root, 'data'), password = process.env.ADMIN_PASSWORD || '', publicOrigin = process.env.PUBLIC_ORIGIN || '', secureCookie = process.env.COOKIE_SECURE === 'true', seedRecords = [] } = {}) {
-  mkdirSync(dataDir, { recursive: true });
-  const db = new DatabaseSync(resolve(dataDir, 'portal.sqlite'));
-  db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY, content TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)');
-  db.exec('CREATE TABLE IF NOT EXISTS portal_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-  if (!db.prepare("SELECT value FROM portal_meta WHERE key = 'initial_content_loaded'").get()) {
+export function createPortal({ dataDir = process.env.DATA_DIR || resolve(root, 'data'), password = process.env.ADMIN_PASSWORD || '', publicOrigin = process.env.PUBLIC_ORIGIN || '', secureCookie = process.env.COOKIE_SECURE === 'true', seedRecords = [], storage = null, securityStorage = null } = {}) {
+  if (!storage) mkdirSync(dataDir, { recursive: true });
+  const db = storage ? null : new DatabaseSync(resolve(dataDir, 'portal.sqlite'));
+  db?.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS records (id TEXT PRIMARY KEY, content TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)');
+  db?.exec('CREATE TABLE IF NOT EXISTS portal_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+  if (db && !db.prepare("SELECT value FROM portal_meta WHERE key = 'initial_content_loaded'").get()) {
     db.exec('BEGIN IMMEDIATE');
     try {
       if (db.prepare('SELECT COUNT(*) AS count FROM records').get().count === 0) {
@@ -29,11 +29,16 @@ export function createPortal({ dataDir = process.env.DATA_DIR || resolve(root, '
   const attempts = new Map();
   const salt = randomBytes(16);
   const hash = password ? scryptSync(password, salt, 32) : null;
-  const all = () => db.prepare('SELECT * FROM records ORDER BY updated_at DESC').all().map(row => ({ ...JSON.parse(row.content), id: row.id, createdAt: row.created_at, updatedAt: row.updated_at }));
+  const all = async () => storage ? (await storage.list()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) : db.prepare('SELECT * FROM records ORDER BY updated_at DESC').all().map(row => ({ ...JSON.parse(row.content), id: row.id, createdAt: row.created_at, updatedAt: row.updated_at }));
   const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
   const json = (res, status, value, headers = {}) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers }); res.end(JSON.stringify(value)); };
   const cookie = token => `portal_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${token ? 28800 : 0}${secureCookie ? '; Secure' : ''}`;
   const body = async req => {
+    if (req.body !== undefined) {
+      const encoded = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      if (Buffer.byteLength(encoded) > 65536) fail(413, '입력 내용이 너무 큽니다.');
+      try { return JSON.parse(encoded); } catch { fail(400, '입력 내용을 확인해 주세요.'); }
+    }
     let result = ''; let size = 0;
     for await (const chunk of req) { size += chunk.length; if (size > 65536) fail(413, '입력 내용이 너무 큽니다.'); result += chunk; }
     try { return JSON.parse(result); } catch { fail(400, '입력 내용을 확인해 주세요.'); }
@@ -47,13 +52,14 @@ export function createPortal({ dataDir = process.env.DATA_DIR || resolve(root, '
       const token = /(?:^|;\s*)portal_session=([^;]*)/.exec(req.headers.cookie || '')?.[1];
       for (const [key, expiry] of sessions) if (expiry < Date.now()) sessions.delete(key);
       for (const [key, attempt] of attempts) if (Date.now() - attempt.start > 900000) attempts.delete(key);
-      const authenticated = !!token && sessions.has(token);
+      let authenticated = !!token && sessions.has(token);
       if (url.pathname.startsWith('/api/')) {
         if (!['GET', 'HEAD'].includes(req.method)) {
           const expectedOrigin = publicOrigin || `${secureCookie ? 'https' : 'http'}://${req.headers.host}`;
           if (req.headers.origin !== expectedOrigin || req.headers['content-type']?.split(';')[0] !== 'application/json') fail(403, '이 페이지에서 다시 시도해 주세요.');
         }
-        if (url.pathname === '/api/content' && req.method === 'GET') return json(res, 200, { records: all(), updatedAt: new Date().toISOString() });
+        if (url.pathname === '/api/content' && req.method === 'GET') return json(res, 200, { records: await all(), updatedAt: new Date().toISOString() });
+        if (securityStorage && token) authenticated = ((await securityStorage.read()).sessions[token] || 0) > Date.now();
         if (url.pathname === '/api/session' && req.method === 'GET') return json(res, 200, { authenticated, configured: !!hash });
         if (url.pathname === '/api/login' && req.method === 'POST') {
           if (!hash) fail(503, '관리자 설정이 필요합니다. 서버에서 npm run setup을 실행해 주세요.');
@@ -61,6 +67,26 @@ export function createPortal({ dataDir = process.env.DATA_DIR || resolve(root, '
           const attempt = attempts.get(key) || { count: 0, start: Date.now() };
           if (attempt.count >= 10) fail(429, '로그인 시도가 많습니다. 15분 후 다시 시도해 주세요.');
           const input = await body(req);
+          if (securityStorage) {
+            const key = req.headers['x-vercel-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+            const newToken = randomBytes(32).toString('hex');
+            const validPassword = typeof input.password === 'string' && input.password.length <= 200 && timingSafeEqual(hash, scryptSync(input.password, salt, 32));
+            const outcome = await securityStorage.update(value => {
+              const now = Date.now();
+              for (const [session, expiry] of Object.entries(value.sessions)) if (expiry <= now) delete value.sessions[session];
+              for (const [ip, attempt] of Object.entries(value.attempts)) if (now - attempt.start > 900000) delete value.attempts[ip];
+              const attempt = value.attempts[key] || { count: 0, start: now };
+              if (attempt.count >= 10) return 429;
+              if (!validPassword) { attempt.count++; value.attempts[key] = attempt; return 401; }
+              delete value.attempts[key];
+              if (token) delete value.sessions[token];
+              value.sessions[newToken] = now + 28800000;
+              return 200;
+            });
+            if (outcome === 429) fail(429, '로그인 시도가 많습니다. 15분 후 다시 시도해 주세요.');
+            if (outcome === 401) fail(401, '비밀번호를 확인해 주세요.');
+            return json(res, 200, { ok: true }, { 'Set-Cookie': cookie(newToken) });
+          }
           attempt.count++; attempts.set(key, attempt);
           if (typeof input.password !== 'string' || input.password.length > 200 || !timingSafeEqual(hash, scryptSync(input.password, salt, 32))) fail(401, '비밀번호를 확인해 주세요.');
           attempts.delete(key);
@@ -69,17 +95,25 @@ export function createPortal({ dataDir = process.env.DATA_DIR || resolve(root, '
           sessions.set(newToken, Date.now() + 28800000);
           return json(res, 200, { ok: true }, { 'Set-Cookie': cookie(newToken) });
         }
-        if (url.pathname === '/api/logout' && req.method === 'POST') { sessions.delete(token); return json(res, 200, { ok: true }, { 'Set-Cookie': cookie('') }); }
+        if (url.pathname === '/api/logout' && req.method === 'POST') { if (securityStorage && token) await securityStorage.update(value => { delete value.sessions[token]; }); sessions.delete(token); return json(res, 200, { ok: true }, { 'Set-Cookie': cookie('') }); }
         if (url.pathname.startsWith('/api/records')) {
           if (!authenticated) fail(401, '관리자 로그인이 필요합니다.');
           if (url.pathname === '/api/records' && req.method === 'POST') {
             const record = validateRecord(await body(req));
             const id = randomUUID(); const now = new Date().toISOString();
-            db.prepare('INSERT INTO records VALUES (?, ?, ?, ?)').run(id, JSON.stringify(record), now, now);
-            return json(res, 201, { record: { ...record, id, createdAt: now, updatedAt: now } });
+            const created = { ...record, id, createdAt: now, updatedAt: now };
+            if (storage) await storage.create(created); else db.prepare('INSERT INTO records VALUES (?, ?, ?, ?)').run(id, JSON.stringify(record), now, now);
+            return json(res, 201, { record: created });
           }
           const id = /^\/api\/records\/([\w-]+)$/.exec(url.pathname)?.[1];
           if (id && ['PUT', 'DELETE'].includes(req.method)) {
+            if (storage) {
+              if (req.method === 'DELETE') { await storage.delete(id); return json(res, 200, { ok: true }); }
+              const input = await body(req);
+              const record = validateRecord(input);
+              const saved = await storage.update(id, { ...record, updatedAt: input.updatedAt });
+              return json(res, 200, { record: saved });
+            }
             const previous = db.prepare('SELECT * FROM records WHERE id = ?').get(id);
             if (!previous) fail(404, '등록된 정보를 찾을 수 없습니다.');
             if (req.method === 'DELETE') { db.prepare('DELETE FROM records WHERE id = ?').run(id); return json(res, 200, { ok: true }); }
@@ -104,7 +138,7 @@ export function createPortal({ dataDir = process.env.DATA_DIR || resolve(root, '
       json(res, error.status || 500, { error: error.status ? error.message : '처리 중 문제가 발생했습니다. 다시 시도해 주세요.' });
     }
   });
-  server.on('close', () => db.close());
+  server.on('close', () => db?.close());
   return server;
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
