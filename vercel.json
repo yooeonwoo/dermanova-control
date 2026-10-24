@@ -6,7 +6,7 @@
   "regions": ["icn1"],
   "functions": {
     "api/portal.js": {
-      "includeFiles": "lib/initial-content.json",
+      "includeFiles": "lib/*.json",
       "maxDuration": 30
     }
   },
