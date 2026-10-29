@@ -33,7 +33,8 @@
     "archived": false,
     "id": "b574e347-7566-4e82-950b-9b95933ae9ef",
     "createdAt": "2026-10-04T11:06:08.695Z",
-    "updatedAt": "2026-10-04T11:06:08.695Z"
+    "updatedAt": "2026-10-04T11:06:08.695Z",
+    "planning": true
   },
   {
     "type": "event",

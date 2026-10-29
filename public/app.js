@@ -40,8 +40,9 @@ function demoRecords() {
   ];
 }
 const records = () => state.demo ? demoRecords() : state.records;
-const eventStatus = r => r.archived || r.endDate < today() ? '종료' : r.startDate > today() ? '예정' : '진행 중';
-const statusBadge = r => { const label = eventStatus(r); return `<span class="status ${label === '종료' ? 'ended' : label === '예정' ? 'upcoming' : ''}">${label}</span>`; };
+const eventStatus = r => r.planning ? '기획/보류' : r.archived || r.endDate < today() ? '종료' : r.startDate > today() ? '예정' : '진행 중';
+const eventPeriod = r => r.planning ? '일정 미정' : `${fullDate(r.startDate)} — ${fullDate(r.endDate)}`;
+const statusBadge = r => { const label = eventStatus(r); return `<span class="status ${label === '종료' ? 'ended' : label === '기획/보류' ? 'planning' : label === '예정' ? 'upcoming' : ''}">${label}</span>`; };
 const linkActive = r => !r.archived && (!r.endDate || r.endDate >= today());
 const matches = r => (state.brand === '전체' || r.brand === state.brand || r.brand === '공통') && (!state.query || [r.title, r.brand, r.description, r.body, r.category, r.owner].some(v => (v || '').toLocaleLowerCase().includes(state.query.toLocaleLowerCase())));
 const filtered = type => records().filter(r => (!type || r.type === type) && matches(r));
@@ -60,8 +61,8 @@ function noticeRow(r) {
   return `<button class="notice-row" ${action('detail', r.id)}>${r.pinned ? '<span class="badge important">중요</span>' : badge(r.brand)}<span class="notice-main"><b>${escape(r.title)}</b><p>${escape(r.description)}</p></span><span class="notice-date">${dateLabel(r.updatedAt)}</span>${icon('arrow')}</button>`;
 }
 function eventCard(r, compact = false) {
-  if (compact) return `<article class="panel event-card"><div class="event-date">${r.startDate.slice(5, 7)}월<strong>${Number(r.startDate.slice(8, 10))}</strong></div><div class="event-info"><div>${badge(r.brand)} ${statusBadge(r)}</div><h3>${escape(r.title)}</h3><p>${fullDate(r.startDate)} — ${fullDate(r.endDate)}</p></div><button class="button small" ${action('detail', r.id)} aria-label="${escape(r.title)} 상세 보기">상세${icon('arrow')}</button></article>`;
-  return `<article class="panel event-tile"><div class="card-top">${badge(r.brand)}${statusBadge(r)}</div><h3>${escape(r.title)}</h3><p>${escape(r.description)}</p><div class="event-meta">${icon('calendar')}${fullDate(r.startDate)} — ${fullDate(r.endDate)}</div>${r.owner ? `<div class="event-meta">${icon('settings')}${escape(r.owner)}</div>` : ''}<div class="card-actions"><button class="button" ${action('detail', r.id)}>상세 보기${icon('arrow')}</button><button class="button" ${action('copy-page', r.id)}>${icon('copy')}안내 공유</button></div></article>`;
+  if (compact) return `<article class="panel event-card"><div class="event-date">${r.startDate.slice(5, 7)}월<strong>${Number(r.startDate.slice(8, 10))}</strong></div><div class="event-info"><div>${badge(r.brand)} ${statusBadge(r)}</div><h3>${escape(r.title)}</h3><p>${eventPeriod(r)}</p></div><button class="button small" ${action('detail', r.id)} aria-label="${escape(r.title)} 상세 보기">상세${icon('arrow')}</button></article>`;
+  return `<article class="panel event-tile"><div class="card-top">${badge(r.brand)}${statusBadge(r)}</div><h3>${escape(r.title)}</h3><p>${escape(r.description)}</p><div class="event-meta">${icon('calendar')}${eventPeriod(r)}</div>${r.owner ? `<div class="event-meta">${icon('settings')}${escape(r.owner)}</div>` : ''}<div class="card-actions"><button class="button" ${action('detail', r.id)}>상세 보기${icon('arrow')}</button><button class="button" ${action('copy-page', r.id)}>${icon('copy')}안내 공유</button></div></article>`;
 }
 function sectionHead(title, glyph, route, subtitle = '') {
   return `<div class="section-head"><div><h2>${icon(glyph)}${title}</h2>${subtitle ? `<p>${subtitle}</p>` : ''}</div>${route ? `<a class="text-link" href="#${route}">전체 보기${icon('arrow')}</a>` : ''}</div>`;
@@ -70,14 +71,14 @@ function home() {
   const allNotices = priority(filtered('notice').filter(r => !r.archived));
   const notices = state.noticesExpanded ? allNotices : allNotices.slice(0, 3);
   const links = filtered('link').filter(r => linkActive(r) && HOME_LINK_URLS.includes(r.url)).sort((a, b) => HOME_LINK_URLS.indexOf(a.url) - HOME_LINK_URLS.indexOf(b.url));
-  const events = filtered('event').filter(r => eventStatus(r) !== '종료').sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 3);
+  const events = filtered('event').filter(r => ['진행 중', '예정'].includes(eventStatus(r))).sort((a, b) => (a.startDate || '').localeCompare(b.startDate || '')).slice(0, 3);
   return `<section class="section">${sectionHead('공지', 'bell', null)}${notices.length ? `<div class="panel">${notices.map(noticeRow).join('')}</div>${allNotices.length > 3 ? `<button class="text-link" data-action="notice-expand" aria-expanded="${state.noticesExpanded}">${state.noticesExpanded ? '접기' : `공지 ${allNotices.length}개 모두 보기`}${icon('arrow')}</button>` : ''}` : empty('등록된 공지가 없습니다')}</section>
     <section class="section">${sectionHead('자주 쓰는 링크', 'link', 'links')}${links.length ? `<div class="link-grid">${links.map(linkCard).join('')}</div>` : empty('등록된 링크가 없습니다')}</section>
     <section class="section">${sectionHead('다가오는 행사', 'calendar', 'events')}${events.length ? `<div class="event-list">${events.map(r => eventCard(r, true)).join('')}</div>` : empty('등록된 행사가 없습니다')} </section>`;
 }
 function eventsPage() {
-  const list = filtered('event').filter(r => eventStatus(r) === state.eventTab).sort((a, b) => state.eventTab === '종료' ? b.endDate.localeCompare(a.endDate) : a.startDate.localeCompare(b.startDate));
-  return `<div class="filter-row"><div class="tabs" role="group" aria-label="행사 상태">${['진행 중', '예정', '종료'].map(tab => `<button class="tab ${state.eventTab === tab ? 'active' : ''}" data-action="event-tab" data-value="${tab}" aria-pressed="${state.eventTab === tab}">${tab} <span class="count-badge">${filtered('event').filter(r => eventStatus(r) === tab).length}</span></button>`).join('')}</div><span class="result-count">${list.length}개의 행사</span></div>${list.length ? `<div class="events-grid">${list.map(r => eventCard(r)).join('')}</div>` : empty(`${state.eventTab} 행사가 없습니다`, '다른 상태나 브랜드를 선택하거나 검색어를 변경해 보세요.')}`;
+  const list = filtered('event').filter(r => eventStatus(r) === state.eventTab).sort((a, b) => state.eventTab === '종료' ? b.endDate.localeCompare(a.endDate) : (a.startDate || '').localeCompare(b.startDate || ''));
+  return `<div class="filter-row"><div class="tabs" role="group" aria-label="행사 상태">${['진행 중', '예정', '종료', '기획/보류'].map(tab => `<button class="tab ${state.eventTab === tab ? 'active' : ''}" data-action="event-tab" data-value="${tab}" aria-pressed="${state.eventTab === tab}">${tab} <span class="count-badge">${filtered('event').filter(r => eventStatus(r) === tab).length}</span></button>`).join('')}</div><span class="result-count">${list.length}개의 행사</span></div>${list.length ? `<div class="events-grid">${list.map(r => eventCard(r)).join('')}</div>` : empty(`${state.eventTab} 행사가 없습니다`, '다른 상태나 브랜드를 선택하거나 검색어를 변경해 보세요.')}`;
 }
 function linksPage() {
   const list = priority(filtered('link').filter(r => linkActive(r) && (state.category === '전체' || r.category === state.category)));
@@ -91,14 +92,14 @@ function searchPage() {
 function adminPage() {
   if (!state.authenticated) return empty('관리자 로그인이 필요합니다', '직원은 로그인 없이 이용할 수 있습니다. 등록과 수정을 하려면 관리자 로그인을 해주세요.', '<button class="button primary" data-action="login">관리자 로그인</button>');
   const list = priority(state.records.filter(r => matches(r) && (state.adminType === '전체' || r.type === state.adminType)));
-  return `<div class="admin-toolbar"><div><button class="button subtle" data-action="logout">로그아웃</button><button class="button primary" data-action="new">${icon('plus')}새 정보 등록</button></div></div><div class="filter-row"><div class="tabs" role="group" aria-label="관리 정보 종류">${[['전체', '전체'], ['notice', '공지'], ['event', '이벤트 / 행사'], ['link', '공유 링크']].map(([value, label]) => `<button class="tab ${state.adminType === value ? 'active' : ''}" data-action="admin-tab" data-value="${value}" aria-pressed="${state.adminType === value}">${label}</button>`).join('')}</div><span class="result-count">${list.length}개의 정보</span></div>${list.length ? `<div class="panel">${list.map(r => `<article class="admin-record"><div>${badge(r.brand)} <span class="card-category">${{ notice: '공지', event: '행사', link: '링크' }[r.type]}${r.archived ? ' · 보관됨' : ''}${r.pinned ? ' · 홈 우선 표시' : ''}</span><h3>${escape(r.title)}</h3><p>최종 수정 ${fullDate(r.updatedAt)}${r.owner ? ` · ${escape(r.owner)}` : ''}</p></div><div><button class="button small" ${action('edit', r.id)}>수정</button><button class="button small danger" ${action('delete', r.id)}>삭제</button></div></article>`).join('')}</div>` : empty('등록된 정보가 없습니다', '실제 링크와 행사 내용을 등록하면 팀이 함께 볼 수 있습니다.')}`;
+  return `<div class="admin-toolbar"><div><button class="button subtle" data-action="logout">로그아웃</button><button class="button primary" data-action="new">${icon('plus')}새 정보 등록</button></div></div><div class="filter-row"><div class="tabs" role="group" aria-label="관리 정보 종류">${[['전체', '전체'], ['notice', '공지'], ['event', '이벤트 / 행사'], ['link', '공유 링크']].map(([value, label]) => `<button class="tab ${state.adminType === value ? 'active' : ''}" data-action="admin-tab" data-value="${value}" aria-pressed="${state.adminType === value}">${label}</button>`).join('')}</div><span class="result-count">${list.length}개의 정보</span></div>${list.length ? `<div class="panel">${list.map(r => `<article class="admin-record"><div>${badge(r.brand)} <span class="card-category">${{ notice: '공지', event: '행사', link: '링크' }[r.type]}${r.type === 'event' && r.planning ? ' · 기획/보류' : r.archived ? ' · 보관됨' : ''}${r.pinned ? ' · 홈 우선 표시' : ''}</span><h3>${escape(r.title)}</h3><p>최종 수정 ${fullDate(r.updatedAt)}${r.owner ? ` · ${escape(r.owner)}` : ''}</p></div><div><button class="button small" ${action('edit', r.id)}>수정</button><button class="button small danger" ${action('delete', r.id)}>삭제</button></div></article>`).join('')}</div>` : empty('등록된 정보가 없습니다', '실제 링크와 행사 내용을 등록하면 팀이 함께 볼 수 있습니다.')}`;
 }
 function render() {
   const page = state.query && state.route !== 'admin' ? 'search' : state.route;
   $('page-title').textContent = titles[page];
   $('breadcrumb').textContent = { home: '홈', events: '이벤트 / 행사', links: '링크모음', search: '통합 검색', admin: '정보 관리' }[page];
   document.title = `더마노바 관제센터 · ${$('breadcrumb').textContent}`;
-  $('navigation').innerHTML = [['home', 'home', '홈'], ['events', 'calendar', '이벤트 / 행사'], ['links', 'link', '링크모음']].map(([route, glyph, label]) => `<a class="nav-item ${state.route === route ? 'active' : ''}" href="#${route}" ${state.route === route ? 'aria-current="page"' : ''} title="${label}">${icon(glyph)}<span class="nav-text">${label}</span>${route !== 'home' ? `<span class="nav-count">${records().filter(r => route === 'links' ? r.type === 'link' && linkActive(r) : r.type === 'event' && eventStatus(r) !== '종료').length}</span>` : ''}</a>`).join('');
+  $('navigation').innerHTML = [['home', 'home', '홈'], ['events', 'calendar', '이벤트 / 행사'], ['links', 'link', '링크모음']].map(([route, glyph, label]) => `<a class="nav-item ${state.route === route ? 'active' : ''}" href="#${route}" ${state.route === route ? 'aria-current="page"' : ''} title="${label}">${icon(glyph)}<span class="nav-text">${label}</span>${route !== 'home' ? `<span class="nav-count">${records().filter(r => route === 'links' ? r.type === 'link' && linkActive(r) : r.type === 'event' && ['진행 중', '예정'].includes(eventStatus(r))).length}</span>` : ''}</a>`).join('');
   $('brand-filters').innerHTML = brands.map(brand => `<button class="brand-filter ${state.brand === brand ? 'selected' : ''} ${brandClass(brand)}" data-brand="${brand}" aria-pressed="${state.brand === brand}">${brand !== '전체' ? '<span class="brand-dot"></span>' : ''}${brand}</button>`).join('');
   $('mode-banner').innerHTML = state.demo ? '<div class="demo-banner"><span><b>예시 자료</b> · 실제 운영 정보 아님</span><button data-action="demo">예시 닫기</button></div>' : '';
   $('demo-toggle').textContent = state.demo ? '예시 닫기' : '예시 보기';
@@ -138,7 +139,7 @@ function detail(id) {
   const r = records().find(item => item.id === id);
   if (!r) { toast('해당 정보를 찾을 수 없습니다.'); return; }
   const url = validUrl(r.url);
-  $('detail-content').innerHTML = `<div class="dialog-top"><button class="icon-button close-dialog" aria-label="닫기">×</button></div><div>${badge(r.brand)} ${r.type === 'event' ? statusBadge(r) : r.archived ? '<span class="status ended">보관됨</span>' : ''}</div><h2 id="detail-title">${escape(r.title)}</h2><p class="detail-summary">${escape(r.description)}</p><div class="detail-meta">${r.type === 'event' ? `<span>${icon('calendar')} ${fullDate(r.startDate)} — ${fullDate(r.endDate)}</span>` : ''}${r.owner ? `<span>담당 ${escape(r.owner)}</span>` : ''}<span>최종 수정 ${fullDate(r.updatedAt)}</span></div>${r.body ? `<div class="detail-body">${escape(r.body)}</div>` : ''}${state.demo ? '<p class="form-hint">예시 자료 · 실제 운영 정보 아님</p>' : ''}${url ? `<div class="detail-url">${escape(url)}</div>` : ''}<div class="dialog-actions">${url ? `<a class="button primary" href="${escape(url)}" target="_blank" rel="noopener noreferrer">${icon('external')}링크 열기</a><button class="button" ${action('copy', r.id)}>${icon('copy')}링크 복사</button>` : ''}${r.shareText && url ? `<button class="button" ${action('copy-message', r.id)}>안내문 + 링크 복사</button>` : ''}${!state.demo ? `<button class="button" ${action('copy-page', r.id)}>${icon('copy')}이 안내 공유</button>` : ''}</div>`;
+  $('detail-content').innerHTML = `<div class="dialog-top"><button class="icon-button close-dialog" aria-label="닫기">×</button></div><div>${badge(r.brand)} ${r.type === 'event' ? statusBadge(r) : r.archived ? '<span class="status ended">보관됨</span>' : ''}</div><h2 id="detail-title">${escape(r.title)}</h2><p class="detail-summary">${escape(r.description)}</p><div class="detail-meta">${r.type === 'event' ? `<span>${icon('calendar')} ${eventPeriod(r)}</span>` : ''}${r.owner ? `<span>담당 ${escape(r.owner)}</span>` : ''}<span>최종 수정 ${fullDate(r.updatedAt)}</span></div>${r.body ? `<div class="detail-body">${escape(r.body)}</div>` : ''}${state.demo ? '<p class="form-hint">예시 자료 · 실제 운영 정보 아님</p>' : ''}${url ? `<div class="detail-url">${escape(url)}</div>` : ''}<div class="dialog-actions">${url ? `<a class="button primary" href="${escape(url)}" target="_blank" rel="noopener noreferrer">${icon('external')}링크 열기</a><button class="button" ${action('copy', r.id)}>${icon('copy')}링크 복사</button>` : ''}${r.shareText && url ? `<button class="button" ${action('copy-message', r.id)}>안내문 + 링크 복사</button>` : ''}${!state.demo ? `<button class="button" ${action('copy-page', r.id)}>${icon('copy')}이 안내 공유</button>` : ''}</div>`;
   if (!$('detail-dialog').open) $('detail-dialog').showModal();
 }
 function route() {
@@ -161,7 +162,8 @@ function editor(id) {
 }
 function editorFields() {
   const form = $('editor-form'); const type = form.elements.type.value;
-  form.querySelectorAll('.event-field').forEach(el => { el.hidden = type !== 'event'; el.querySelector('input').required = type === 'event'; if (type !== 'event') el.querySelector('input').value = ''; });
+  form.querySelectorAll('.event-field').forEach(el => { el.hidden = type !== 'event'; el.querySelector('input').required = type === 'event' && !form.elements.planning.checked; if (type !== 'event') el.querySelector('input').value = ''; });
+  form.querySelectorAll('.planning-field').forEach(el => { el.hidden = type !== 'event'; });
   form.querySelectorAll('.link-field').forEach(el => { el.hidden = type !== 'link'; });
   form.elements.url.required = type === 'link';
 }
@@ -204,9 +206,10 @@ $('login-form').addEventListener('submit', async event => {
   try { await api('/api/login', { method: 'POST', body: JSON.stringify({ password: new FormData(event.target).get('password') }) }); state.authenticated = true; state.demo = false; $('login-dialog').close(); location.hash = 'admin'; state.route = 'admin'; render(); toast('로그인했습니다.'); }
   catch (error) { $('login-error').textContent = error.message; } finally { button.disabled = false; }
 });
+$('editor-form').elements.planning.addEventListener('change', editorFields);
 $('editor-form').addEventListener('submit', async event => {
   event.preventDefault(); const button = event.submitter; button.disabled = true; $('editor-error').textContent = '';
-  const data = Object.fromEntries(new FormData(event.target)); data.pinned = !!data.pinned; data.archived = !!data.archived;
+  const data = Object.fromEntries(new FormData(event.target)); data.pinned = !!data.pinned; data.archived = !!data.archived; data.planning = data.type === 'event' && !!data.planning;
   if (state.editing) data.updatedAt = state.editing.updatedAt;
   try { await api(state.editing ? `/api/records/${state.editing.id}` : '/api/records', { method: state.editing ? 'PUT' : 'POST', body: JSON.stringify(data) }); $('editor-dialog').close(); await load(); toast('저장했습니다.'); }
   catch (error) { $('editor-error').textContent = error.message; } finally { button.disabled = false; }

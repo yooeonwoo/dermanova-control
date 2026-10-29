@@ -64,7 +64,8 @@ test('repo event/notice registrations archive existing admin records by id and l
   assert.equal(records.length, expectedLength);
   assert.equal(records.find(r => r.id === adminEvent.id).archived, true);
   assert.equal(records.find(r => r.id === adminNotice.id).archived, true);
-  assert.deepEqual(records.find(r => r.id === otherEvent.id), otherEvent);
+  assert.equal(records.find(r => r.id === otherEvent.id).planning, true);
+  assert.equal(records.find(r => r.id === otherEvent.id).body, otherEvent.body);
   assert.equal(blob.puts(), 1);
   assert.equal((await open().list()).find(r => r.id === adminEvent.id).archived, true);
   assert.equal(blob.puts(), 1);

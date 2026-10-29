@@ -22,5 +22,15 @@
     "endDate": "2026-11-11",
     "pinned": false,
     "archived": false
+  },
+  {
+    "id": "b574e347-7566-4e82-950b-9b95933ae9ef",
+    "type": "event",
+    "title": "'송선미가 쏜다!' 리페어크림 증정이벤트",
+    "brand": "바이오폭스",
+    "startDate": "2026-10-10",
+    "endDate": "2026-10-31",
+    "planning": true,
+    "archived": false
   }
 ]
