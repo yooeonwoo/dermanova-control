@@ -9,5 +9,16 @@
     "url": "https://biofox-partners-guide.netlify.app",
     "pinned": false,
     "archived": false
+  },
+  {
+    "id": "66049a7c-45a6-40d0-9271-34e7dc098dd2",
+    "type": "link",
+    "title": "바이오폭스 갤러리",
+    "description": "원장님용 바이오폭스 갤러리입니다. (미사용중)",
+    "brand": "바이오폭스",
+    "category": "홍보·콘텐츠",
+    "url": "https://drive.google.com/drive/folders/1zLfwmLOgSrr8-oJzkOvXPA_N4nf6hULP",
+    "pinned": false,
+    "archived": true
   }
 ]

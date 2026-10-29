@@ -5,7 +5,9 @@ import { BlobPreconditionFailedError } from '@vercel/blob';
 import { createBlobRecordStore } from '../lib/blob-store.js';
 import { prepareLinkRegistrations, applyLinkRegistrations } from '../lib/github-link-registrations.js';
 
-const entries = JSON.parse(readFileSync(new URL('../lib/link-registrations.json', import.meta.url), 'utf8'));
+const allLinkEntries = JSON.parse(readFileSync(new URL('../lib/link-registrations.json', import.meta.url), 'utf8'));
+const entries = allLinkEntries.filter(entry => entry.id === 'github-biofox-partners-guide');
+if (entries.length !== 1) throw new Error('expected github-biofox-partners-guide in link-registrations.json');
 const original = {
   id: 'existing-record', type: 'link', title: '기존 자료', brand: '공통', category: '교육·자료',
   url: 'https://example.org/original', description: '기존 설명', body: '기존 상세 내용', owner: '교육팀',
