@@ -1,0 +1,14 @@
+[
+  {
+    "id": "684a1f15-e1d9-440b-b69f-e3a454a6c45e",
+    "type": "event",
+    "title": "[test]큐어부스터 10+5행사",
+    "brand": "바이오폭스",
+    "description": "조대표님 생신 기념 큐어부스터 10+5행사",
+    "body": "조대표님 생신 기념 큐어부스터 10+5행사 진행\n행사 기간: 2026년 10월 4일 ~ 10월 10일",
+    "startDate": "2026-10-04",
+    "endDate": "2026-10-10",
+    "pinned": false,
+    "archived": true
+  }
+]

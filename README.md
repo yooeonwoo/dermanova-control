@@ -55,11 +55,57 @@ vercel.cmd deploy --prod
 
 백업은 서버를 중지한 상태에서 `data/portal.sqlite`를 복사하는 방법이 가장 간단합니다. 실행 중에는 SQLite 백업 도구를 사용하고 WAL 파일을 임의로 지우지 마세요.
 
-## GitHub로 공유 링크 등록
+## GitHub로 공유 링크·행사·공지 등록
 
-`lib/link-registrations.json`에 제목, 자료설명(`description`), 브랜드, 분류, URL과 고유 ID를 넣고 푸시하면 Vercel 반영 후 링크모음에 저장됩니다. 홈에 올리지 않는 항목은 `pinned: false`로 등록합니다. 이 파일에는 공유 링크만 넣으며, 기존 관리자 로그인과 화면 등록 기능은 그대로 사용합니다.
+`lib/link-registrations.json`, `lib/event-registrations.json`, `lib/notice-registrations.json`에 항목을 넣고 푸시하면 Vercel 반영 후 운영 Blob에 동기화됩니다. 홈에 올리지 않는 항목은 `pinned: false`로 등록합니다. 관리자 로그인과 화면 등록 기능은 그대로 사용합니다.
 
-등록한 내용은 운영 Blob 저장소에 반영하고 처리 이력을 함께 보관합니다. 같은 파일로 다시 배포해도 중복 등록하지 않으며, 관리자가 수정하거나 삭제한 항목을 같은 내용으로 다시 덮어쓰거나 복구하지 않습니다. GitHub 등록 내용을 변경해 다시 푸시하면 해당 변경분을 적용합니다. URL이 이미 등록되어 있으면 기존 ID와 별도로 입력한 상세 내용·담당자를 유지합니다.
+공통 규칙:
+
+- `id`: `^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$`, 파일 안에서 고유. 관리자 화면에서 만든 항목을 고치거나 숨길 때는 그 항목의 기존 id를 그대로 쓰면 됩니다.
+- 같은 파일로 다시 배포해도 fingerprint가 같으면 중복 적용하지 않습니다. 파일에서 항목을 지우기만 해서는 사이트에서 삭제되지 않습니다. 숨기려면 `archived: true`로 등록하세요.
+- 링크만 URL 중복을 검사하며, 같은 URL이면 기존 링크에 병합합니다.
+
+### 링크 (`lib/link-registrations.json`)
+
+제목, 자료설명(`description`), 브랜드, 분류, URL과 고유 ID를 넣습니다. 이 파일에는 공유 링크만 넣습니다.
+
+### 행사 (`lib/event-registrations.json`)
+
+행사는 행사명(`title`), 브랜드(`brand`), 기간(`startDate`·`endDate`, `YYYY-MM-DD`), 내용(`description`/`body`)이 필요합니다.
+
+```json
+[
+  {
+    "id": "github-sample-event",
+    "type": "event",
+    "title": "샘플 행사",
+    "brand": "바이오폭스",
+    "description": "한 줄 요약",
+    "body": "상세 안내",
+    "startDate": "2026-11-01",
+    "endDate": "2026-11-07",
+    "pinned": false,
+    "archived": false
+  }
+]
+```
+
+### 공지 (`lib/notice-registrations.json`)
+
+```json
+[
+  {
+    "id": "github-sample-notice",
+    "type": "notice",
+    "title": "샘플 공지",
+    "brand": "공통",
+    "description": "한 줄 요약",
+    "body": "상세 안내",
+    "pinned": true,
+    "archived": false
+  }
+]
+```
 
 ## 확인
 

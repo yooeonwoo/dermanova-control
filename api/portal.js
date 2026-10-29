@@ -4,7 +4,13 @@ import { createBlobRecordStore, createBlobSecurityStore } from '../lib/blob-stor
 
 const seedRecords = JSON.parse(readFileSync(new URL('../lib/initial-content.json', import.meta.url), 'utf8'));
 const linkRegistrations = JSON.parse(readFileSync(new URL('../lib/link-registrations.json', import.meta.url), 'utf8'));
-const portal = createPortal({ storage: createBlobRecordStore(seedRecords, { linkRegistrations }), securityStorage: createBlobSecurityStore(), secureCookie: true });
+const eventRegistrations = JSON.parse(readFileSync(new URL('../lib/event-registrations.json', import.meta.url), 'utf8'));
+const noticeRegistrations = JSON.parse(readFileSync(new URL('../lib/notice-registrations.json', import.meta.url), 'utf8'));
+const portal = createPortal({
+  storage: createBlobRecordStore(seedRecords, { linkRegistrations, eventRegistrations, noticeRegistrations }),
+  securityStorage: createBlobSecurityStore(),
+  secureCookie: true,
+});
 
 export default function handler(req, res) {
   const route = req.query?.route;
