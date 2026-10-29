@@ -10,5 +10,17 @@
     "endDate": "2026-10-10",
     "pinned": false,
     "archived": true
+  },
+  {
+    "id": "github-biofox-black-friday-2026",
+    "type": "event",
+    "title": "바이오폭스 블랙프라이데이",
+    "brand": "바이오폭스",
+    "description": "메디프레스·프리클린 전제품 1+1, 메디프레스 마스크 100+100",
+    "body": "바이오폭스 블랙프라이데이 행사\n행사 기간: 2026년 10월 27일 ~ 11월 11일\n\n· 메디프레스, 프리클린 전제품 1+1\n· 메디프레스 7히알 / 락토 / PDRN / 엑소 마스크 100+100",
+    "startDate": "2026-10-27",
+    "endDate": "2026-11-11",
+    "pinned": false,
+    "archived": false
   }
 ]

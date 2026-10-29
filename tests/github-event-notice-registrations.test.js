@@ -57,7 +57,11 @@ test('repo event/notice registrations archive existing admin records by id and l
     sdk: blob.sdk,
   });
   const records = await open().list();
-  assert.equal(records.length, 3);
+  const seedIds = new Set([adminEvent.id, adminNotice.id, otherEvent.id]);
+  const expectedLength = 3
+    + eventEntries.filter(entry => !seedIds.has(entry.id)).length
+    + noticeEntries.filter(entry => !seedIds.has(entry.id)).length;
+  assert.equal(records.length, expectedLength);
   assert.equal(records.find(r => r.id === adminEvent.id).archived, true);
   assert.equal(records.find(r => r.id === adminNotice.id).archived, true);
   assert.deepEqual(records.find(r => r.id === otherEvent.id), otherEvent);
